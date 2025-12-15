@@ -122,7 +122,7 @@ func dataSourceReadBlockStorage(ctx context.Context, d *schema.ResourceData, m i
 	d.Set(tfconstants.AttrIOPS, blockStorage.Template.TotalIOPSSec)
 
 	// Handle VM attachment details if present
-	if blockStorage.VMDetail != nil && len(blockStorage.VMDetail) > 0 {
+	if len(blockStorage.VMDetail) > 0 {
 		if vmID, ok := blockStorage.VMDetail["vm_id"]; ok {
 			if vmIDFloat, ok := vmID.(float64); ok {
 				d.Set(tfconstants.AttrVMID, strconv.Itoa(int(vmIDFloat)))
