@@ -432,7 +432,7 @@ func resourceReadPostgress(ctx context.Context, d *schema.ResourceData, m interf
 
 	// Set resource ID
 	d.SetId(strconv.Itoa(cluster.ID))
-	if err := d.Set(tfconstants.AttrID, cluster.ID); err != nil {
+	if err := d.Set(tfconstants.AttrID, strconv.Itoa(cluster.ID)); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -578,7 +578,14 @@ func resourceUpdatePostgress(ctx context.Context, d *schema.ResourceData, m inte
 
 	// Handle public IP changes
 	if d.HasChange(tfconstants.AttrPublicIPRequired) {
-		newVal := d.Get(tfconstants.AttrPublicIPRequired).(bool)
+		_, newValRaw := d.GetChange(tfconstants.AttrPublicIPRequired)
+		var newVal bool
+		if newValRaw != nil {
+			newVal = newValRaw.(bool)
+		} else {
+			// Fallback to Get() if GetChange returns nil
+			newVal = d.Get(tfconstants.AttrPublicIPRequired).(bool)
+		}
 		currentStatus := d.Get(tfconstants.AttrStatus).(string)
 
 		// Block operation if DBaaS is still in "Creating" state
@@ -761,7 +768,7 @@ func resourceUpdatePostgress(ctx context.Context, d *schema.ResourceData, m inte
 	// Handle plan upgrades
 	if d.HasChange(tfconstants.AttrPlan) {
 		prevPlan, currPlan := d.GetChange(tfconstants.AttrPlan)
-		plan := d.Get(tfconstants.AttrPlan).(string)
+		plan := currPlan.(string)
 		version := d.Get(tfconstants.AttrVersion).(string)
 
 		currentStatus := d.Get(tfconstants.AttrStatus).(string)
