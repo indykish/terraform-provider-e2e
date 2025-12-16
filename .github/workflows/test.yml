@@ -5,26 +5,30 @@ on:
   push:
     branches:
       - main
+      - develop
 
 jobs:
-  # Unit tests across supported Go versions
   test:
     name: Unit Tests (Go ${{ matrix.go-version }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to commit and push README changes
+
     strategy:
       fail-fast: false
       matrix:
         go-version:
-          - '1.24.x'
-          - '1.25.x'
+          - "1.24.x"
+          - "1.25.x"
+
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-
-      - name: Check out code
-        uses: actions/checkout@v4
 
       - name: Go Vet
         run: make vet
@@ -32,9 +36,54 @@ jobs:
       - name: Lint with golangci-lint
         run: make lint
 
-      # Disabled terrafmt check for now
       # - name: Format Check
       #   run: make terrafmt-check
 
-      - name: Run Tests
-        run: make test
+      - name: Run Tests with Coverage
+        run: |
+          go test ./... \
+            -v \
+            -covermode=atomic \
+            -coverprofile=coverage.out
+
+          # Always print coverage in logs
+          go tool cover -func=coverage.out | tee coverage.txt
+
+      # ---------------------------------------------------------
+      # Coverage summary + README badge update (single Go version)
+      # ---------------------------------------------------------
+      - name: Coverage Summary & Badge Update
+        if: matrix.go-version == '1.24.x' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3,1,length($3)-1)}')
+
+          # Decide badge color
+          if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+            COLOR=brightgreen
+          elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
+            COLOR=yellow
+          else
+            COLOR=red
+          fi
+
+          BADGE_URL="https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR}?style=for-the-badge"
+
+          # Update README badge (matches with or without query parameters)
+          sed -i "s|https://img\.shields\.io/badge/coverage-[0-9.]*%25-[a-z]*\(.*\)|$BADGE_URL|g" README.md
+
+          # Job Summary
+          {
+            echo "## 🧪 Go Test Coverage"
+            echo ""
+            echo "**Total Coverage:** ${COVERAGE}%"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit Coverage Badge Update
+        if: matrix.go-version == '1.24.x' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add README.md
+          git diff --cached --quiet || git commit -m "chore: update coverage badge"
+          git push

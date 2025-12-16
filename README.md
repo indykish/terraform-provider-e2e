@@ -13,6 +13,9 @@
   <a href="https://registry.terraform.io/providers/e2eterraformprovider/e2e/latest">
     <img src="https://img.shields.io/badge/Terraform-Provider-purple?style=for-the-badge" />
   </a>
+  <a href="https://github.com/e2eterraformprovider/terraform-provider-e2e/actions/workflows/test.yml">
+    <img src="https://img.shields.io/badge/coverage-0%25-red?style=for-the-badge" alt="Coverage" />
+  </a>
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" />
   </a>
